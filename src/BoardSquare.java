@@ -3,7 +3,7 @@ import java.awt.Graphics;
 
 public class BoardSquare {
 
-	//variables
+	//VARIABLES
 	private int xLoc, yLoc;
 	private int sWidth, sHeight;
 	private int sState; //open, player1, player 2
@@ -13,7 +13,6 @@ public class BoardSquare {
 	private Color lColor; //cross lines
 	private Color bColor; //border
 	private Color iColor; //inner section
-	private Color eColor; //extra
 	private Color darkStone; //outer
 	private Color darkStoneIn; //innner
 	private Color darkStoneH; //highlight
@@ -21,7 +20,7 @@ public class BoardSquare {
 	private Color lightStoneIn; //inner
 	boolean isInner = false;
 	
-	//constructor
+	//CONSTRUCTOR
 	public BoardSquare(int x, int y, int w, int h) {
 		//assigning
 		xLoc = x;
@@ -31,15 +30,15 @@ public class BoardSquare {
 		
 		sColor = new Color(234, 209, 190); //beige
 		sColorB = new Color(181, 172, 166); //beige gray
-		sColorW = new Color(216, 206, 197); //lighter beige gray
+		sColorW = new Color(206, 196, 187); //lighter beige gray
 		iColor = new Color(221, 197, 179); //darker beige
 		lColor = new Color(233, 175, 163); //light pink 
 		bColor = new Color(104, 80, 68); //brown
 		darkStone = new Color(58, 64, 90); //dark blue
 		darkStoneIn = new Color(93, 99, 124); //lighter dark blue
 		darkStoneH = new Color(213, 215, 224);
-		lightStone = new Color(190, 190, 190); //white-ish
-		lightStoneIn = new Color(229, 229, 229); //lighter white-ish
+		lightStone = new Color(170, 170, 170); //white-ish
+		lightStoneIn = new Color(219, 219, 219); //lighter white-ish
 
 		
 		sState = GameBoard.EMPTY;
@@ -50,7 +49,7 @@ public class BoardSquare {
 		isInner = true;
 	}
 	
-	//behaviors / methods
+	//BEHAVIORS / METHODS
 	public void drawMe(Graphics g) {
 		
 		//square
@@ -92,12 +91,37 @@ public class BoardSquare {
 		}
 	}
 	
+	//accessor methods
+	
 	public void setState(int newState) { //empty = 0; black = 1; white = -1;
 		if(newState < -1 || newState > 1) {
 			System.out.println(newState + " is an illegal state");
 		} else {
 			this.sState = newState;
 		}
+	}
+	
+	public int getState() {
+		return sState;
+	}
+	
+	public void setXLoc(int newX) {
+		xLoc = newX;
+	}
+	
+	public void setYLoc(int newY) {
+		yLoc = newY;
+	}
+	
+	public boolean isClicked(int clickX, int clickY) {
+		boolean didYouClick = false;
+		
+		if(xLoc < clickX && clickX < xLoc + sWidth) {
+			if(yLoc < clickY && clickY < yLoc + sHeight) {
+				didYouClick = true;
+			}
+		}
+		return didYouClick;
 	}
 	
 }
