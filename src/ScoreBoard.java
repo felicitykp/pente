@@ -2,6 +2,7 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics;
+import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
@@ -9,6 +10,7 @@ import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 
@@ -27,7 +29,9 @@ public class ScoreBoard extends JPanel implements ActionListener{
 	private JLabel whoseTurn;
 	private JButton resetButton;
 
-	private GameBoard myBoard;
+	private GameBoard myBoard = null;
+	
+	private boolean firstGame = true;
 	
 	//CONSTRUCTORS
 	public ScoreBoard(int w, int h) {
@@ -142,7 +146,12 @@ public class ScoreBoard extends JPanel implements ActionListener{
 			whoseTurn.setText("It's Player 2's Turn");
 		}
 		
-		repaint();
+		Rectangle r = whoseTurn.getVisibleRect();
+		if(firstGame == true) {
+			whoseTurn.repaint();
+		} else {
+			whoseTurn.paintImmediately(r);
+		}
 	}
 	
 	public void setCaptures(int c, int whichPlayer) {
@@ -152,7 +161,16 @@ public class ScoreBoard extends JPanel implements ActionListener{
 			p2Score.setText("<html><div style='text-align: center'>Player 2 Name<br>" + c + "</div></html>");
 		}
 		
-		repaint();
+		Rectangle r1 = p1Score.getVisibleRect();
+		Rectangle r2 = p2Score.getVisibleRect();
+		
+		if(firstGame == true) {
+			p1Score.repaint();
+			p2Score.repaint();
+		} else {
+			p1Score.paintImmediately(r1);
+			p2Score.paintImmediately(r2);
+		}
 	}
 
 	public void setGameBoard(GameBoard gb) {
@@ -162,8 +180,10 @@ public class ScoreBoard extends JPanel implements ActionListener{
 	@Override
 	public void actionPerformed(ActionEvent e) {
 		// TODO Auto-generated method stub
-		System.out.println("Button Clicked");
-		if(myBoard != null) myBoard.startNewGame();
+		firstGame = false;
+		JOptionPane.showMessageDialog(null, "Starting New Game");
+		if(myBoard != null) myBoard.startNewGame(false);
+		
 	}
 
 }

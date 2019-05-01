@@ -16,8 +16,10 @@ public class GameBoard extends JPanel implements MouseListener{
 	public static final int NUM_SQUARE_SIDE = 19;
 	public static final int INNER_START = 7;
 	public static final int INNER_END = 11;
-	public static final int PLAYER1_TURN = 1; //assumed that player 1 is dark stone
+	public static final int PLAYER1_TURN = 1; //assumed that player 1 is white stone
 	public static final int PLAYER2_TURN = -1;
+	public static final int MAX_CAPTURES = 10;
+	public static final int SLEEP_TIME = 600;
 	
 	//variables for setup
 	private int bWidth, bHeight;
@@ -25,15 +27,23 @@ public class GameBoard extends JPanel implements MouseListener{
 	private int squareW, squareH;
 	
 	//variables for game
-	int playerTurn;
-	boolean player1IsComp = false;
-	boolean player2IsComp = false;
-	String p1Name, p2Name;
-	int p1Score, p2Score;
+	private int playerTurn;
+	private boolean player1IsComp = false;
+	private boolean player2IsComp = false;
+	private String p1Name, p2Name;
+	private int p1Score, p2Score;
+	
+	//variables for specialized issues
+	private boolean secondMoveTaken = false;
+	private boolean gameOver = false;
 	
 	//variables for components
 	private BoardSquare[][] gameBoard; //holds board pieces
 	private ScoreBoard scoreBoard; 
+	
+	//variables for computer move generator
+	private ComputerMoveGenerator p1ComputerPlayer = null;
+	private ComputerMoveGenerator p2ComputerPlayer = null;
 	
 	
 	//CONSTRUCTOR
@@ -92,32 +102,50 @@ public class GameBoard extends JPanel implements MouseListener{
 		for(int col = 0; col < NUM_SQUARE_SIDE; col++) {
 			for(int row = 0; row < NUM_SQUARE_SIDE; row++) {
 				gameBoard[row][col].setState(EMPTY);
+				gameBoard[row][col].setWinningSquare(false);
 			}
 		}
+		//this.paintImmediately(0, 0, bWidth, bHeight);
+		this.repaint();
 	}
 	
-	public void startNewGame() {
+	public void startNewGame(boolean firstGame) {
+		p1Score = 0;
+		p2Score = 0;
+		gameOver = false;
 		
-		p1Name = JOptionPane.showInputDialog("Name of Player 1: (or type 'c' for computer ");
-		if(p1Name.equals("c") || p1Name.equals("computer")) {
-			player1IsComp = true;
-		} 
-		
-		
-		
-		p2Name = JOptionPane.showInputDialog("Name of Player 2: (or type 'c' for computer ");
-		if(p2Name.equals("c") || p2Name.equals("computer")) {
-			player2IsComp = true;
+		if(firstGame) {
+			p1Name = JOptionPane.showInputDialog("Name of Player 1: (or type 'c' for computer ");
+			if(p1Name.toLowerCase().equals("c") || p1Name.toLowerCase().equals("computer") || p1Name.toLowerCase().equals("comp")) {
+				player1IsComp = true;
+				//System.out.println("comp is gonna play for 1");
+				p1ComputerPlayer = new ComputerMoveGenerator(this, WHITESTONE);
+			} 
 		}
+		
+		scoreBoard.setName(p1Name, WHITESTONE);
+		scoreBoard.setCaptures(p1Score, WHITESTONE);
+		
+		if(firstGame) {
+			p2Name = JOptionPane.showInputDialog("Name of Player 2: (or type 'c' for computer ");
+			if(p2Name.toLowerCase().equals("c") || p2Name.toLowerCase().equals("computer") || p2Name.toLowerCase().equals("comp")) {
+				player2IsComp = true;
+				//System.out.println("comp is gonna play for 2");
+				p2ComputerPlayer = new ComputerMoveGenerator(this, BLACKSTONE);
+			}
+		}
+		
+		scoreBoard.setCaptures(p2Score, BLACKSTONE);
+		scoreBoard.setName(p2Name, BLACKSTONE);
 		
 		resetBoard();
 		
+		//first stone placed
 		playerTurn = PLAYER1_TURN;
 		this.gameBoard[NUM_SQUARE_SIDE / 2][NUM_SQUARE_SIDE / 2].setState(WHITESTONE);
-		playerTurn = PLAYER2_TURN;
-		
-		scoreBoard.setName(p1Name, WHITESTONE);
-		scoreBoard.setName(p2Name, BLACKSTONE);
+		this.secondMoveTaken = false;
+		changePlayerTurn();
+		checkForComputerMove(playerTurn);	
 		
 		this.repaint();
 	}
@@ -128,49 +156,108 @@ public class GameBoard extends JPanel implements MouseListener{
 	}
 	
 	public void checkClick(int clickX, int clickY) {
-		for(int col = 0; col < NUM_SQUARE_SIDE; col++) {
-			for(int row = 0; row < NUM_SQUARE_SIDE; row++) {
-				boolean squareClicked = gameBoard[row][col].isClicked(clickX, clickY);
-				if(squareClicked) {
-					if(gameBoard[row][col].getState() == EMPTY) {
-						System.out.println("You clicked the square at [" + row + ", " + col + "]");
-						gameBoard[row][col].setState(playerTurn);
-						checkForCaptures(row, col, playerTurn);
-						this.repaint();
-						this.changePlayerTurn();
-					} else {
-						JOptionPane.showMessageDialog(null, "This Square is Taken");
+		if(!gameOver) {
+			for(int col = 0; col < NUM_SQUARE_SIDE; col++) {
+				for(int row = 0; row < NUM_SQUARE_SIDE; row++) {
+					boolean squareClicked = gameBoard[row][col].isClicked(clickX, clickY);
+					if(squareClicked) {
+						if(gameBoard[row][col].getState() == EMPTY) {
+							if(!darkSquareProblem(row, col)) {
+								gameBoard[row][col].setState(playerTurn);
+								checkForCaptures(row, col, playerTurn);
+								this.paintImmediately(0, 0, bWidth, bHeight );
+								checkForWin(row, col, playerTurn);
+								repaint();
+								if(!gameOver) {
+									this.changePlayerTurn();
+									checkForComputerMove(playerTurn);
+								}
+							} else {
+								JOptionPane.showMessageDialog(null, "This is an Invalid Move");
+							}
+						} else {
+							JOptionPane.showMessageDialog(null, "This Square is Taken");
+						}
 					}
 				}
 			}
 		}
 	}
 	
+	public void checkForComputerMove(int whichPlayer) {
+		if(whichPlayer == PLAYER1_TURN && this.player1IsComp == true) {
+			//System.out.println("check for player 1 comp move");
+			
+			int[] nextMove = this.p1ComputerPlayer.getComputerMove();
+			int newR = nextMove[0];
+			int newC = nextMove[1];
+			
+			gameBoard[newR][newC].setState(whichPlayer);
+			this.paintImmediately(0, 0, bWidth, bHeight);
+			checkForCaptures(newR, newC, whichPlayer);
+			this.repaint();
+			checkForWin(newR, newC, whichPlayer);
+			if(!gameOver) {
+				this.changePlayerTurn();
+				checkForComputerMove(playerTurn);
+			}
+			
+		} else if (whichPlayer == PLAYER2_TURN && this.player2IsComp == true) {
+			//System.out.println("check for player 2 comp move");
+			
+			int[] nextMove = this.p2ComputerPlayer.getComputerMove();
+			int newR = nextMove[0];
+			int newC = nextMove[1];
+			
+			gameBoard[newR][newC].setState(whichPlayer);
+			this.paintImmediately(0, 0, bWidth, bHeight);
+			checkForCaptures(newR, newC, whichPlayer);
+			this.repaint();
+			checkForWin(newR, newC, whichPlayer);
+			if(!gameOver) {
+				this.changePlayerTurn();
+				checkForComputerMove(playerTurn);
+			}
+		}
+		
+		this.repaint();
+	}
+	
+	public boolean darkSquareProblem(int r, int c) {
+		boolean dSP = false;
+		
+		if(secondMoveTaken == false && playerTurn == WHITESTONE) {
+			if((r >= INNER_START && r <= INNER_END) && (c >= INNER_START && c <= INNER_END)) {
+				dSP = true;
+			} else {
+				secondMoveTaken = true;
+			}
+		}
+		
+		return dSP;
+	}
+	
 	//big routine for check captures
 	public void checkForCaptures(int r, int c, int pt) {
-		boolean didCapture;
-		
 		//vertical
-		didCapture = checkForCapture(r, c, pt, 1, 0);
-		didCapture = checkForCapture(r, c, pt, -1, 0);
+		checkForCapture(r, c, pt, 1, 0);
+		checkForCapture(r, c, pt, -1, 0);
 		
 		//horizontal
-		didCapture = checkForCapture(r, c, pt, 0, 1);
-		didCapture = checkForCapture(r, c, pt, 0, -1);
+		checkForCapture(r, c, pt, 0, 1);
+		checkForCapture(r, c, pt, 0, -1);
 		
 		//diagonal
-		didCapture = checkForCapture(r, c, pt, 1, -1);
-		didCapture = checkForCapture(r, c, pt, -1, 1);
-		didCapture = checkForCapture(r, c, pt, 1, 1);
-		didCapture = checkForCapture(r, c, pt, -1, -1);
+		checkForCapture(r, c, pt, 1, -1);
+		checkForCapture(r, c, pt, -1, 1);
+		checkForCapture(r, c, pt, 1, 1);
+		checkForCapture(r, c, pt, -1, -1);
 	}
 	
 	public boolean checkForCapture(int r, int c, int pt, int upDown, int rightLeft) {
 		
 		try {
 			boolean capture = false;
-		
-			System.out.println("got in");
 			if(gameBoard[r+(rightLeft)][c+(upDown)].getState() == pt*-1) {
 				if(gameBoard[r+(rightLeft*2)][c+(upDown*2)].getState() == pt*-1) {
 					if(gameBoard[r+(rightLeft*3)][c+(upDown*3)].getState() == pt) {
@@ -190,8 +277,72 @@ public class GameBoard extends JPanel implements MouseListener{
 			}
 			return capture;
 		} catch(ArrayIndexOutOfBoundsException e) {
-			System.out.println("error" + e.toString());
+			//System.out.println("error" + e.toString());
 			return false;
+		}
+	}
+	
+	public boolean fiveInARow(int whichPlayer) {
+		boolean isFive = false;
+		
+		for(int col = 0; col < NUM_SQUARE_SIDE; col++) {
+			for(int row = 0; row < NUM_SQUARE_SIDE; row++) {
+				for(int rL = -1; rL <= 1; rL++) {
+					for(int uD = -1; uD <= 1; uD++) {
+						if(fiveCheck(row, col, whichPlayer, uD, rL)) {
+							isFive = true;
+							//System.out.println("found a 5");
+						}
+					}
+				}
+			}
+		}
+		return isFive;
+	}
+	
+	public boolean fiveCheck (int r, int c, int pt, int upDown, int rightLeft) {
+		boolean yesFive = false;
+		
+		try {
+			if(!(upDown == 0 && rightLeft == 0)) {
+				if(gameBoard[r][c].getState() == pt) {
+					if(gameBoard[r+(rightLeft)][c+(upDown)].getState() == pt) {
+						if(gameBoard[r+(rightLeft*2)][c+(upDown*2)].getState() == pt) {
+							if(gameBoard[r+(rightLeft*3)][c+(upDown*3)].getState() == pt) {
+								if(gameBoard[r+(rightLeft*4)][c+(upDown*4)].getState() == pt) {
+									yesFive = true;
+									gameBoard[r][c].setWinningSquare(true);
+									gameBoard[r+(rightLeft)][c+(upDown)].setWinningSquare(true);
+									gameBoard[r+(rightLeft*2)][c+(upDown*2)].setWinningSquare(true);
+									gameBoard[r+(rightLeft*3)][c+(upDown*3)].setWinningSquare(true);
+									gameBoard[r+(rightLeft*4)][c+(upDown*4)].setWinningSquare(true);
+								}
+							}
+						}
+					}
+				}
+			}
+			return yesFive;
+		} catch(ArrayIndexOutOfBoundsException e) {
+			return yesFive;
+		}
+	}
+	
+	public void checkForWin(int r, int c, int whichPlayer) {
+		if(whichPlayer == WHITESTONE) {
+			if(this.p1Score >= MAX_CAPTURES) {
+				JOptionPane.showMessageDialog(null, "Congratulations " + p1Name+ " Wins by Capture!");
+				gameOver = true;
+			} else if(fiveInARow(playerTurn)) {
+				JOptionPane.showMessageDialog(null, "Congratulations " + p1Name+ " Wins by 5 in a Row!");
+			}
+		} else if(whichPlayer == BLACKSTONE){
+			if(this.p2Score >= MAX_CAPTURES) {
+				JOptionPane.showMessageDialog(null, "Congratulations " + p2Name+ " Wins!");
+				gameOver = true;
+			} else if(fiveInARow(playerTurn)) {
+				JOptionPane.showMessageDialog(null, "Congratulations " + p2Name+ " Wins by 5 in a Row!");
+			}
 		}
 	}
 
@@ -323,5 +474,10 @@ public class GameBoard extends JPanel implements MouseListener{
 		this.gameBoard[15][13].setState(BLACKSTONE);
 		this.gameBoard[16][13].setState(BLACKSTONE);
 		this.gameBoard[17][13].setState(BLACKSTONE);
+	}
+	
+	//ACESSOR
+	public BoardSquare[][] getBoard() {
+		return gameBoard;
 	}
 }

@@ -36,7 +36,7 @@ public class GameRunner {
 		
 		//final setup
 		theGame.setVisible(true);
-		gb.startNewGame();
+		gb.startNewGame(true);
 	}
 
 }

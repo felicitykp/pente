@@ -1,5 +1,7 @@
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
 
 public class BoardSquare {
 
@@ -14,11 +16,15 @@ public class BoardSquare {
 	private Color bColor; //border
 	private Color iColor; //inner section
 	private Color darkStone; //outer
-	private Color darkStoneIn; //innner
+	private Color darkStoneIn; //inner
 	private Color darkStoneH; //highlight
 	private Color lightStone; //outer
 	private Color lightStoneIn; //inner
-	boolean isInner = false;
+	private Color win;
+	
+	//booleans
+	private boolean isInner = false;
+	private boolean isWinningSquare = false;
 	
 	//CONSTRUCTOR
 	public BoardSquare(int x, int y, int w, int h) {
@@ -39,6 +45,7 @@ public class BoardSquare {
 		darkStoneH = new Color(213, 215, 224);
 		lightStone = new Color(170, 170, 170); //white-ish
 		lightStoneIn = new Color(219, 219, 219); //lighter white-ish
+		win = new Color(237, 183, 23); //mustard
 
 		
 		sState = GameBoard.EMPTY;
@@ -89,13 +96,23 @@ public class BoardSquare {
 			g.setColor(lightStoneIn);
 			g.fillOval(xLoc + 6, yLoc + 3, sWidth - 10, sHeight - 8);
 		}
+		
+		//winning stuff
+		if(isWinningSquare) {
+			Graphics2D g2 = (Graphics2D) g;
+			g2.setStroke(new BasicStroke(2));
+			g2.setColor(win);
+			g2.drawOval(xLoc + 2, yLoc + 2, sWidth - 4, sHeight - 4);
+			g2.setStroke(new BasicStroke(1));
+		}
+		
 	}
 	
 	//accessor methods
 	
 	public void setState(int newState) { //empty = 0; black = 1; white = -1;
 		if(newState < -1 || newState > 1) {
-			System.out.println(newState + " is an illegal state");
+			//System.out.println(newState + " is an illegal state");
 		} else {
 			this.sState = newState;
 		}
@@ -123,5 +140,11 @@ public class BoardSquare {
 		}
 		return didYouClick;
 	}
+	
+	public void setWinningSquare(boolean newState) {
+		isWinningSquare = newState;
+	}
+	
+	
 	
 }
