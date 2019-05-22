@@ -20,6 +20,8 @@ public class GameBoard extends JPanel implements MouseListener{
 	public static final int PLAYER2_TURN = -1;
 	public static final int MAX_CAPTURES = 10;
 	public static final int SLEEP_TIME = 600;
+	public static final int FELICITY = 3;
+	public static final int ROCHE = 4;
 	
 	//variables for setup
 	private int bWidth, bHeight;
@@ -40,6 +42,10 @@ public class GameBoard extends JPanel implements MouseListener{
 	//variables for components
 	private BoardSquare[][] gameBoard; //holds board pieces
 	private ScoreBoard scoreBoard; 
+	
+	//variables for multiple computer move generators
+	private String[] compMoveGenList = {"Felicity's", "Roche's"}; //ADDED
+	private int whoseCompMoveGen;
 	
 	//variables for computer move generator
 	private ComputerMoveGenerator p1ComputerPlayer = null;
@@ -114,12 +120,25 @@ public class GameBoard extends JPanel implements MouseListener{
 		p2Score = 0;
 		gameOver = false;
 		
+		//prep all computer move generators for specific needs
+		ComputerMoveGenerator.FIRST_MOVE = true;
+		
 		if(firstGame) {
 			p1Name = JOptionPane.showInputDialog("Name of Player 1: (or type 'c' for computer ");
 			if(p1Name.toLowerCase().equals("c") || p1Name.toLowerCase().equals("computer") || p1Name.toLowerCase().equals("comp")) {
 				player1IsComp = true;
-				//System.out.println("comp is gonna play for 1");
-				p1ComputerPlayer = new ComputerMoveGenerator(this, WHITESTONE);
+				
+				//determine which computer
+				String computer = (String) JOptionPane.showInputDialog(null, "Select which computer to play against", "Select from list", 
+						JOptionPane.QUESTION_MESSAGE, null, compMoveGenList, compMoveGenList[0]);
+				
+				if(computer == "Felicity's") {
+					whoseCompMoveGen = FELICITY;
+				} else if (computer == "Roche's") {
+					whoseCompMoveGen = ROCHE;
+				}
+				
+				p1ComputerPlayer = new ComputerMoveGenerator(this, WHITESTONE, whoseCompMoveGen);
 			} 
 		}
 		
@@ -130,8 +149,18 @@ public class GameBoard extends JPanel implements MouseListener{
 			p2Name = JOptionPane.showInputDialog("Name of Player 2: (or type 'c' for computer ");
 			if(p2Name.toLowerCase().equals("c") || p2Name.toLowerCase().equals("computer") || p2Name.toLowerCase().equals("comp")) {
 				player2IsComp = true;
-				//System.out.println("comp is gonna play for 2");
-				p2ComputerPlayer = new ComputerMoveGenerator(this, BLACKSTONE);
+				
+				//determine which computer
+				String computer = (String) JOptionPane.showInputDialog(null, "Select which computer to play against", "Select from list", 
+						JOptionPane.QUESTION_MESSAGE, null, compMoveGenList, compMoveGenList[0]);
+				
+				if(computer == "Felicity's") {
+					whoseCompMoveGen = FELICITY;
+				} else if (computer == "Roche's") {
+					whoseCompMoveGen = ROCHE;
+				}
+				
+				p2ComputerPlayer = new ComputerMoveGenerator(this, BLACKSTONE, whoseCompMoveGen);
 			}
 		}
 		
@@ -144,6 +173,7 @@ public class GameBoard extends JPanel implements MouseListener{
 		playerTurn = PLAYER1_TURN;
 		this.gameBoard[NUM_SQUARE_SIDE / 2][NUM_SQUARE_SIDE / 2].setState(WHITESTONE);
 		this.secondMoveTaken = false;
+		ComputerMoveGenerator.FIRST_MOVE = false;
 		changePlayerTurn();
 		checkForComputerMove(playerTurn);	
 		
@@ -185,38 +215,72 @@ public class GameBoard extends JPanel implements MouseListener{
 	}
 	
 	public void checkForComputerMove(int whichPlayer) {
-		if(whichPlayer == PLAYER1_TURN && this.player1IsComp == true) {
-			//System.out.println("check for player 1 comp move");
-			
-			int[] nextMove = this.p1ComputerPlayer.getComputerMove();
-			int newR = nextMove[0];
-			int newC = nextMove[1];
-			
-			gameBoard[newR][newC].setState(whichPlayer);
-			this.paintImmediately(0, 0, bWidth, bHeight);
-			checkForCaptures(newR, newC, whichPlayer);
-			this.repaint();
-			checkForWin(newR, newC, whichPlayer);
-			if(!gameOver) {
-				this.changePlayerTurn();
-				checkForComputerMove(playerTurn);
+		
+		if(whoseCompMoveGen == FELICITY) {
+			if(whichPlayer == PLAYER1_TURN && this.player1IsComp == true) {
+				
+				int[] nextMove = this.p1ComputerPlayer.getFComputerMove();
+				
+				int newR = nextMove[0];
+				int newC = nextMove[1];
+				
+				gameBoard[newR][newC].setState(whichPlayer);
+				this.paintImmediately(0, 0, bWidth, bHeight);
+				checkForCaptures(newR, newC, whichPlayer);
+				this.repaint();
+				checkForWin(newR, newC, whichPlayer);
+				if(!gameOver) {
+					this.changePlayerTurn();
+					checkForComputerMove(playerTurn);
+				}
+			} else if (whichPlayer == PLAYER2_TURN && this.player2IsComp == true) {
+				
+				int[] nextMove = this.p2ComputerPlayer.getFComputerMove();
+				int newR = nextMove[0];
+				int newC = nextMove[1];
+				
+				gameBoard[newR][newC].setState(whichPlayer);
+				this.paintImmediately(0, 0, bWidth, bHeight);
+				checkForCaptures(newR, newC, whichPlayer);
+				this.repaint();
+				checkForWin(newR, newC, whichPlayer);
+				if(!gameOver) {
+					this.changePlayerTurn();
+					checkForComputerMove(playerTurn);
+				}
 			}
-			
-		} else if (whichPlayer == PLAYER2_TURN && this.player2IsComp == true) {
-			//System.out.println("check for player 2 comp move");
-			
-			int[] nextMove = this.p2ComputerPlayer.getComputerMove();
-			int newR = nextMove[0];
-			int newC = nextMove[1];
-			
-			gameBoard[newR][newC].setState(whichPlayer);
-			this.paintImmediately(0, 0, bWidth, bHeight);
-			checkForCaptures(newR, newC, whichPlayer);
-			this.repaint();
-			checkForWin(newR, newC, whichPlayer);
-			if(!gameOver) {
-				this.changePlayerTurn();
-				checkForComputerMove(playerTurn);
+		} else if(whoseCompMoveGen == ROCHE) {
+			if(whichPlayer == PLAYER1_TURN && this.player1IsComp == true) {
+				
+				int[] nextMove = this.p1ComputerPlayer.getRComputerMove();
+				
+				int newR = nextMove[0];
+				int newC = nextMove[1];
+				
+				gameBoard[newR][newC].setState(whichPlayer);
+				this.paintImmediately(0, 0, bWidth, bHeight);
+				checkForCaptures(newR, newC, whichPlayer);
+				this.repaint();
+				checkForWin(newR, newC, whichPlayer);
+				if(!gameOver) {
+					this.changePlayerTurn();
+					checkForComputerMove(playerTurn);
+				}
+			} else if (whichPlayer == PLAYER2_TURN && this.player2IsComp == true) {
+				
+				int[] nextMove = this.p2ComputerPlayer.getRComputerMove();
+				int newR = nextMove[0];
+				int newC = nextMove[1];
+				
+				gameBoard[newR][newC].setState(whichPlayer);
+				this.paintImmediately(0, 0, bWidth, bHeight);
+				checkForCaptures(newR, newC, whichPlayer);
+				this.repaint();
+				checkForWin(newR, newC, whichPlayer);
+				if(!gameOver) {
+					this.changePlayerTurn();
+					checkForComputerMove(playerTurn);
+				}
 			}
 		}
 		
@@ -346,13 +410,10 @@ public class GameBoard extends JPanel implements MouseListener{
 		}
 	}
 
-	
-
 	//mouse listener methods
 	public void mouseClicked(MouseEvent e) { //override
 		//no...
 	}
-	
 	
 	public void mousePressed(MouseEvent e) { //override
 		this.checkClick(e.getX(), e.getY());
@@ -480,4 +541,8 @@ public class GameBoard extends JPanel implements MouseListener{
 	public BoardSquare[][] getBoard() {
 		return gameBoard;
 	}
+	
+	public boolean getDarkStoneMove2Taken() {
+        return secondMoveTaken;
+    }
 }
